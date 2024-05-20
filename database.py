@@ -1,6 +1,7 @@
 import sqlite3
 import re
 
+
 def get_dtype(dtype):
     if dtype == "Int64" or dtype == "int64":
         return "INTEGER"
@@ -12,7 +13,7 @@ def get_dtype(dtype):
         return "TEXT"
 
 
-def sanitize_column_name(name):
+def sanitize(name):
     return re.sub(r"\W+", "", name)
 
 
@@ -24,12 +25,14 @@ def insert_data(data, table_name):
 
     columns = [
         (
-            f"`{sanitize_column_name(col)}` {get_dtype(data_types[col])}"
+            f"`{sanitize(col)}` {get_dtype(data_types[col])}"
             if "(" in col
-            else f"{sanitize_column_name(col).replace('Group', '`Group`')} {get_dtype(data_types[col])}"
+            else f"{sanitize(col).replace('Group', '`Group`')} {get_dtype(data_types[col])}"
         )
         for col in data.columns
     ]
+
+    table_name = sanitize(table_name)
 
     create_table_query = (
         f'CREATE TABLE IF NOT EXISTS {table_name} ({", ".join(columns)});'
@@ -44,3 +47,14 @@ def insert_data(data, table_name):
 
     conn.commit()
     conn.close()
+
+
+def get_tables():
+    conn = sqlite3.connect("data_analytics.db")
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+    tables = cursor.fetchall()
+
+    table_names = [table[0] for table in tables]
+    return table_names

@@ -2,7 +2,7 @@ import pandas as pd
 from io import BytesIO
 import streamlit as st
 import chardet
-from database import insert_data
+from database import insert_data, get_tables
 
 
 @st.experimental_dialog("Upload Data")
@@ -16,10 +16,7 @@ def upload_data():
             result = chardet.detect(raw_data)
             encoding = result["encoding"]
 
-            # TODO: Process data and store in DB
             data = pd.read_csv(BytesIO(raw_data), encoding=encoding)
-
-            header = data.columns.tolist()
 
             insert_data(data, filename)
 
@@ -34,3 +31,9 @@ with st.sidebar:
     upload_button = st.button("Upload Data")
     if upload_button:
         upload_data()
+
+    table_names = get_tables()
+    selected_table = st.selectbox('Select a table:', table_names)
+
+
+    
