@@ -58,3 +58,13 @@ def get_tables():
 
     table_names = [table[0] for table in tables]
     return table_names
+
+def get_table(table_name):
+    conn = sqlite3.connect('data_analytics.db')
+    cursor = conn.cursor()
+
+    cursor.execute(f'SELECT * FROM {table_name};')
+    data = cursor.fetchall()
+
+    conn.close()
+    return data
