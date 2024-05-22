@@ -1,6 +1,6 @@
 import sqlite3
 import re
-
+import logging
 
 def get_dtype(dtype):
     if dtype == "Int64" or dtype == "int64":
@@ -59,12 +59,50 @@ def get_tables():
     table_names = [table[0] for table in tables]
     return table_names
 
+
 def get_table(table_name):
-    conn = sqlite3.connect('data_analytics.db')
+    conn = sqlite3.connect("data_analytics.db")
     cursor = conn.cursor()
 
-    cursor.execute(f'SELECT * FROM {table_name};')
+    cursor.execute(f"SELECT * FROM {table_name};")
     data = cursor.fetchall()
 
     conn.close()
     return data
+
+def run_sql_query(query):
+    conn = sqlite3.connect("data_analytics.db")
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute(query)
+        data = cursor.fetchall()
+
+        conn.close()
+    except Exception as e:
+        logging.info(f"Error executing query: {query}, {e}")
+    return data
+   
+def get_table_schema(table_name):
+    conn = sqlite3.connect("data_analytics.db")
+    cursor = conn.cursor()
+
+    cursor.execute(f"PRAGMA table_info({table_name});")
+
+    schema = cursor.fetchall()
+    formatted_schema = format_table_scheme(schema, table_name)
+
+    conn.close()
+    return formatted_schema
+
+def format_table_scheme(schema, table_name):
+    formatted_schema = f"Table name: {table_name}\n"
+
+    for column in schema:
+        formatted_schema += f"Column Name: {column[1]}\n"
+        formatted_schema += f"Data Type: {column[2]}\n"
+        formatted_schema += f"Not Null: {'Yes' if column[3] else 'No'}\n"
+        formatted_schema += f"Default Value: {column[4]}\n"
+        formatted_schema += f"Primary Key: {'Yes' if column[5] else 'No'}\n\n"
+
+    return formatted_schema
