@@ -7,6 +7,8 @@ from database import insert_data, get_tables, get_table, get_table_schema, run_s
 from prompts import sql_prompt, qa_prompt
 import ollama
 from typing import Dict, Generator
+from openai import OpenAI
+import constants
 
 log_file = f"app_logger.log"
 logging.basicConfig(filename=log_file, level=logging.INFO)
@@ -19,6 +21,10 @@ if "data" not in st.session_state:
 
 if "current_dataset" not in st.session_state:
     st.session_state.current_dataset = "current_dataset"
+
+client = OpenAI(
+    api_key=constants.OPENAI_API_KEY,
+)
 
 
 def ollama_generator(model_name: str, messages: Dict) -> Generator:
@@ -66,11 +72,6 @@ with st.sidebar:
 
         st.session_state.current_dataset = table_names[st.session_state.selected_table]
 
-        st.session_state.data = get_table(selected_table)
-
-        schema = get_table_schema(st.session_state.current_dataset)
-        st.write(schema)
-
 # TODO: ugly and bad
 if question := st.chat_input("Ask a question!"):
     schema = get_table_schema(st.session_state.current_dataset)
@@ -83,10 +84,12 @@ if question := st.chat_input("Ask a question!"):
     with st.chat_message("user"):
         st.markdown(question)
 
-    response = ollama.chat(model="llama3", messages=messages)
-    query = response["message"]["content"]
-
-    logging.info(f"Query: {query}\n AI Response: {response}")
+    completion = client.chat.completions.create(
+        messages=messages,
+        model="gpt-3.5-turbo",
+    )
+    query = completion.choices[0].message.content
+    logging.info(f"Query: {query}")
 
     result = run_sql_query(query)
 
@@ -99,7 +102,9 @@ if question := st.chat_input("Ask a question!"):
     messages.append({"role": "system", "content": prompt})
 
     with st.chat_message("assistant"):
-        st.write(response)
-        response = st.write_stream(
-            ollama_generator(model_name="llama3", messages=messages)
+        stream = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=messages,
+            stream=True,
         )
+        response = st.write_stream(stream)

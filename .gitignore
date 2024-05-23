@@ -2,3 +2,4 @@
 __pycache__/
 data_analytics.db
 app_logger.log
+constants.py
