@@ -20,7 +20,7 @@ if "data" not in st.session_state:
     st.session_state.data = ""
 
 if "current_dataset" not in st.session_state:
-    st.session_state.current_dataset = "current_dataset"
+    st.session_state.current_dataset = ""
 
 client = OpenAI(
     api_key=constants.OPENAI_API_KEY,
@@ -67,10 +67,19 @@ with st.sidebar:
         "Select a table:", table_names, index=st.session_state.selected_table
     )
 
-    if st.session_state.selected_table != table_names.index(selected_table):
+    if (st.session_state.selected_table != table_names.index(selected_table)) or (
+        not st.session_state.current_dataset and len(table_names) > 0
+    ):
         st.session_state.selected_table = table_names.index(selected_table)
 
         st.session_state.current_dataset = table_names[st.session_state.selected_table]
+
+    if st.session_state.current_dataset:
+        st.header(f"Curent Table: {st.session_state.current_dataset}")
+    else:
+        st.write(
+            "No active table for chat. Please upload a CSV file to chat over data."
+        )
 
 # TODO: ugly and bad
 if question := st.chat_input("Ask a question!"):
