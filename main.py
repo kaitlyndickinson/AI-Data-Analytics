@@ -3,7 +3,15 @@ import logging
 from io import BytesIO
 import streamlit as st
 import chardet
-from database import insert_data, get_tables, get_table, get_table_schema, run_sql_query
+from data_analytics import insert_data, get_tables, get_table_schema, run_sql_query
+from chat_instances import (
+    create_database,
+    update_chat_instance,
+    add_chat_instance,
+    get_chat_history,
+    fetch_chats,
+    delete_chat_instance
+)
 from prompts import sql_prompt, qa_prompt
 import ollama
 from typing import Dict, Generator
@@ -21,6 +29,12 @@ if "data" not in st.session_state:
 
 if "current_dataset" not in st.session_state:
     st.session_state.current_dataset = ""
+
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+if "current_chat_id" not in st.session_state:
+    st.session_state.current_chat_id = None
 
 client = OpenAI(
     api_key=constants.OPENAI_API_KEY,
@@ -54,12 +68,19 @@ def upload_data():
 
 st.title("AI Data Analytics")
 
+create_database()
+
+get_chat_history()
 
 with st.sidebar:
     upload_button = st.button("Upload Data")
     if upload_button:
         upload_data()
         st.rerun()
+
+    if st.button("Create New Chat"):
+        st.session_state.messages = []
+        add_chat_instance()
 
     table_names = get_tables()
 
@@ -81,8 +102,43 @@ with st.sidebar:
             "No active table for chat. Please upload a CSV file to chat over data."
         )
 
+    header = st.write(f"Active Chat: {st.session_state.current_chat_id}")
+
+    # Sidebar for displaying chat instances
+    chats = fetch_chats()
+
+    for index, chat_id in enumerate(chats):
+        button_label = f"Chat {chat_id[0]}"
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            if st.button(button_label, help="Navigate to chat"):
+                st.session_state.current_chat_id = chat_id[0]
+                st.session_state.messages = get_chat_history()
+                st.rerun()
+
+        with col2:
+            if st.button(
+                "Delete Chat",
+                key=f"{chat_id[0]}_{index}",
+                help="Permanently delete chat, warning: unreversable!",
+            ):
+                delete_chat_instance(chat_id[0])
+                
+                if chat_id[0] == st.session_state.current_chat_id:
+                    st.session_state.current_chat_id = None
+                    
+                st.rerun()
+
+for message in st.session_state.messages:
+    if message["role"] != "system":
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
 # TODO: ugly and bad
 if question := st.chat_input("Ask a question!"):
+    st.session_state.messages.append({"role": "user", "content": question})
     schema = get_table_schema(st.session_state.current_dataset)
     prompt = sql_prompt(question, schema)
 
@@ -106,9 +162,7 @@ if question := st.chat_input("Ask a question!"):
 
     prompt = qa_prompt(question, query, result)
 
-    # TODO: save history of messages
-    messages = []
-    messages.append({"role": "system", "content": prompt})
+    st.session_state.messages.append({"role": "system", "content": prompt})
 
     with st.chat_message("assistant"):
         stream = client.chat.completions.create(
@@ -117,3 +171,10 @@ if question := st.chat_input("Ask a question!"):
             stream=True,
         )
         response = st.write_stream(stream)
+
+    st.session_state.messages.append({"role": "assistant", "content": response})
+
+    if len(st.session_state.messages) > 3:
+        update_chat_instance()
+    else:
+        add_chat_instance()

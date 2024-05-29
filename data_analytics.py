@@ -106,3 +106,4 @@ def format_table_scheme(schema, table_name):
         formatted_schema += f"Primary Key: {'Yes' if column[5] else 'No'}\n\n"
 
     return formatted_schema
+
