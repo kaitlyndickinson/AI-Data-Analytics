@@ -1,6 +1,7 @@
 import sqlite3
 import re
 import logging
+import pandas as pd
 
 def get_dtype(dtype):
     if dtype == "Int64" or dtype == "int64":
@@ -107,3 +108,8 @@ def format_table_scheme(schema, table_name):
 
     return formatted_schema
 
+def get_table_data(table_name):
+    conn = sqlite3.connect("data_analytics.db")
+    df = pd.read_sql_query(f"SELECT * FROM {table_name}", conn)
+
+    return df

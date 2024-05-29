@@ -1,16 +1,23 @@
 import pandas as pd
+import matplotlib.pyplot as plt
 import logging
 from io import BytesIO
 import streamlit as st
 import chardet
-from data_analytics import insert_data, get_tables, get_table_schema, run_sql_query
+from data_analytics import (
+    insert_data,
+    get_tables,
+    get_table_schema,
+    run_sql_query,
+    get_table_data,
+)
 from chat_instances import (
     create_database,
     update_chat_instance,
     add_chat_instance,
     get_chat_history,
     fetch_chats,
-    delete_chat_instance
+    delete_chat_instance,
 )
 from prompts import sql_prompt, qa_prompt
 import ollama
@@ -66,6 +73,13 @@ def upload_data():
             st.warning("Either uploaded file or filename is empty!")
 
 
+@st.experimental_dialog("View Data", width="large")
+def view_data(table_name):
+    st.header(table_name)
+    df = get_table_data(table_name)
+    st.write(df)
+
+
 st.title("AI Data Analytics")
 
 create_database()
@@ -97,6 +111,9 @@ with st.sidebar:
 
     if st.session_state.current_dataset:
         st.header(f"Curent Table: {st.session_state.current_dataset}")
+        if st.button("View Data"):
+            view_data(st.session_state.current_dataset)
+            
     else:
         st.write(
             "No active table for chat. Please upload a CSV file to chat over data."
@@ -125,7 +142,7 @@ with st.sidebar:
                 help="Permanently delete chat, warning: unreversable!",
             ):
                 delete_chat_instance(chat_id[0])
-                
+
                 if chat_id[0] == st.session_state.current_chat_id:
                     st.session_state.current_chat_id = None
 
