@@ -128,7 +128,7 @@ with st.sidebar:
                 
                 if chat_id[0] == st.session_state.current_chat_id:
                     st.session_state.current_chat_id = None
-                    
+
                 st.rerun()
 
 for message in st.session_state.messages:
@@ -138,7 +138,6 @@ for message in st.session_state.messages:
 
 # TODO: ugly and bad
 if question := st.chat_input("Ask a question!"):
-    st.session_state.messages.append({"role": "user", "content": question})
     schema = get_table_schema(st.session_state.current_dataset)
     prompt = sql_prompt(question, schema)
 
@@ -163,18 +162,19 @@ if question := st.chat_input("Ask a question!"):
     prompt = qa_prompt(question, query, result)
 
     st.session_state.messages.append({"role": "system", "content": prompt})
+    st.session_state.messages.append({"role": "user", "content": question})
 
     with st.chat_message("assistant"):
         stream = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=messages,
+            messages=st.session_state.messages,
             stream=True,
         )
         response = st.write_stream(stream)
 
     st.session_state.messages.append({"role": "assistant", "content": response})
 
-    if len(st.session_state.messages) > 3:
+    if len(st.session_state.messages) >= 3:
         update_chat_instance()
     else:
         add_chat_instance()
