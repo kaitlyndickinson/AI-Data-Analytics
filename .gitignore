@@ -2,5 +2,5 @@
 __pycache__/
 data_analytics.db
 chat_instances.db
-app_logger.log
+app_logger*
 constants.py

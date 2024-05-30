@@ -1,5 +1,4 @@
 import pandas as pd
-import matplotlib.pyplot as plt
 import logging
 from io import BytesIO
 import streamlit as st
@@ -20,19 +19,13 @@ from chat_instances import (
     delete_chat_instance,
 )
 from prompts import sql_prompt, qa_prompt
-import ollama
-from typing import Dict, Generator
-from openai import OpenAI
-import constants
+from llm import get_completion
 
 log_file = f"app_logger.log"
 logging.basicConfig(filename=log_file, level=logging.INFO)
 
 if "selected_table" not in st.session_state:
     st.session_state.selected_table = 0
-
-if "data" not in st.session_state:
-    st.session_state.data = ""
 
 if "current_dataset" not in st.session_state:
     st.session_state.current_dataset = ""
@@ -42,16 +35,6 @@ if "messages" not in st.session_state:
 
 if "current_chat_id" not in st.session_state:
     st.session_state.current_chat_id = None
-
-client = OpenAI(
-    api_key=constants.OPENAI_API_KEY,
-)
-
-
-def ollama_generator(model_name: str, messages: Dict) -> Generator:
-    stream = ollama.chat(model=model_name, messages=messages, stream=True)
-    for chunk in stream:
-        yield chunk["message"]["content"]
 
 
 @st.experimental_dialog("Upload Data")
@@ -102,6 +85,8 @@ with st.sidebar:
         "Select a table:", table_names, index=st.session_state.selected_table
     )
 
+    # Either the user has changed the current dataset,
+    # or there isn't one selected but there's tables in the database (happens on startup)
     if (st.session_state.selected_table != table_names.index(selected_table)) or (
         not st.session_state.current_dataset and len(table_names) > 0
     ):
@@ -111,9 +96,10 @@ with st.sidebar:
 
     if st.session_state.current_dataset:
         st.header(f"Curent Table: {st.session_state.current_dataset}")
+
         if st.button("View Data"):
             view_data(st.session_state.current_dataset)
-            
+
     else:
         st.write(
             "No active table for chat. Please upload a CSV file to chat over data."
@@ -121,7 +107,6 @@ with st.sidebar:
 
     header = st.write(f"Active Chat: {st.session_state.current_chat_id}")
 
-    # Sidebar for displaying chat instances
     chats = fetch_chats()
 
     for index, chat_id in enumerate(chats):
@@ -142,9 +127,8 @@ with st.sidebar:
                 help="Permanently delete chat, warning: unreversable!",
             ):
                 delete_chat_instance(chat_id[0])
-
-                if chat_id[0] == st.session_state.current_chat_id:
-                    st.session_state.current_chat_id = None
+                st.session_state.messages = []
+                print("Len after delete", len(st.session_state.messages))
 
                 st.rerun()
 
@@ -153,45 +137,45 @@ for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-# TODO: ugly and bad
 if question := st.chat_input("Ask a question!"):
-    schema = get_table_schema(st.session_state.current_dataset)
-    prompt = sql_prompt(question, schema)
+    if st.session_state.current_dataset:
+        schema = get_table_schema(st.session_state.current_dataset)
+        prompt = sql_prompt(question, schema)
 
-    messages = []
-    messages.append({"role": "system", "content": prompt})
-    messages.append({"role": "user", "content": question})
+        # Temporary messages, since we don't need to save the queries
+        messages = [
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": question},
+        ]
 
-    with st.chat_message("user"):
-        st.markdown(question)
+        with st.chat_message("user"):
+            st.markdown(question)
 
-    completion = client.chat.completions.create(
-        messages=messages,
-        model="gpt-3.5-turbo",
-    )
-    query = completion.choices[0].message.content
-    logging.info(f"Query: {query}")
+        completion = get_completion(messages=messages, stream=False)
+        query = completion.choices[0].message.content
+        logging.info(f"Query: {query}")
 
-    result = run_sql_query(query)
+        result = run_sql_query(query)
 
-    logging.info(f"Response: {result}")
+        logging.info(f"Response: {result}")
 
-    prompt = qa_prompt(question, query, result)
+        prompt = qa_prompt(question, query, result)
 
-    st.session_state.messages.append({"role": "system", "content": prompt})
-    st.session_state.messages.append({"role": "user", "content": question})
+        st.session_state.messages.append({"role": "system", "content": prompt})
+        st.session_state.messages.append({"role": "user", "content": question})
 
-    with st.chat_message("assistant"):
-        stream = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=st.session_state.messages,
-            stream=True,
-        )
-        response = st.write_stream(stream)
+        with st.chat_message("assistant"):
+            stream = get_completion(messages=st.session_state.messages)
+            response = st.write_stream(stream)
 
-    st.session_state.messages.append({"role": "assistant", "content": response})
+        st.session_state.messages.append({"role": "assistant", "content": response})
 
-    if len(st.session_state.messages) >= 3:
-        update_chat_instance()
+        if len(st.session_state.messages) > 3:
+            update_chat_instance()
+        else:
+            add_chat_instance()
+            st.rerun()
     else:
-        add_chat_instance()
+        st.warning(
+            "You need to either upload a dataset or select one before asking a question!"
+        )

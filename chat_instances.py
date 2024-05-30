@@ -1,78 +1,115 @@
-import streamlit as st
 import sqlite3
 import json
+import logging
+import streamlit as st
 
 
 def create_database():
-    conn = sqlite3.connect("chat_instances.db")
-    c = conn.cursor()
+    """
+    Creates the SQLite database if it doesn't exist and initializes the ChatInstances table.
+    Used to store separate chat instances so users can navigate between chats.
 
-    c.execute(
-        """CREATE TABLE IF NOT EXISTS ChatInstances 
-                 (chat_history TEXT, thread_id INTEGER PRIMARY KEY AUTOINCREMENT)"""
-    )
+    Returns:
+    None
+    """
+    try:
+        conn = sqlite3.connect("chat_instances.db")
+        c = conn.cursor()
 
-    conn.commit()
-    conn.close()
+        c.execute(
+            """CREATE TABLE IF NOT EXISTS ChatInstances 
+                     (chat_history TEXT, thread_id INTEGER PRIMARY KEY AUTOINCREMENT)"""
+        )
+
+        conn.commit()
+    except Exception as e:
+        logging.exception(f"Error creating database: {e}")
+    finally:
+        conn.close()
 
 
 def add_chat_instance():
-    chat_history = st.session_state.messages[1:]
+    """
+    Adds a new chat instance to the ChatInstances table.
 
-    # Serialize the updated chat history
-    updated_chat_history = json.dumps(chat_history)
+    Returns:
+    None
+    """
+    try:
+        # Exclude System prompt
+        chat_history = st.session_state.messages[1:]
 
-    conn = sqlite3.connect("chat_instances.db")
-    c = conn.cursor()
+        updated_chat_history = json.dumps(chat_history)
 
-    c.execute(
-        """INSERT INTO ChatInstances (chat_history) 
-                 VALUES (?)""",
-        (updated_chat_history,)
-    )
+        conn = sqlite3.connect("chat_instances.db")
+        c = conn.cursor()
 
-    thread_id = c.lastrowid
+        c.execute(
+            """INSERT INTO ChatInstances (chat_history) 
+                     VALUES (?)""",
+            (updated_chat_history,),
+        )
 
-    st.session_state.current_chat_id = thread_id
+        thread_id = c.lastrowid
 
-    conn.commit()
-    conn.close()
+        st.session_state.current_chat_id = thread_id
+        conn.commit()
+    except Exception as e:
+        logging.exception(f"Error adding new chat instance: {e}")
+    finally:
+        conn.close()
 
 
 def update_chat_instance():
-    chat_history = st.session_state.messages[1:]
+    """
+    Updates an existing chat instance in the ChatInstances table.
 
-    # Serialize the updated chat history
-    updated_chat_history = json.dumps(chat_history)
+    Returns:
+    None
+    """
+    try:
+        # Exclude System prompt
+        chat_history = st.session_state.messages[1:]
 
-    conn = sqlite3.connect("chat_instances.db")
-    c = conn.cursor()
+        updated_chat_history = json.dumps(chat_history)
 
-    c.execute(
-        """UPDATE ChatInstances SET chat_history = ? WHERE thread_id = ?""",
-        (updated_chat_history, st.session_state.current_chat_id),
-    )
+        conn = sqlite3.connect("chat_instances.db")
+        c = conn.cursor()
 
-    conn.commit()
-    conn.close()
+        c.execute(
+            """UPDATE ChatInstances SET chat_history = ? WHERE thread_id = ?""",
+            (updated_chat_history, st.session_state.current_chat_id),
+        )
+
+        conn.commit()
+    except Exception as e:
+        logging.exception("Error updating chat instance:")
+    finally:
+        conn.close()
 
 
 def get_chat_history():
-    conn = sqlite3.connect("chat_instances.db")
-    c = conn.cursor()
+    """
+    Retrieves the chat history for the current chat instance.
 
-    # Query to retrieve chat history based on username and chat ID
-    c.execute(
-        """SELECT chat_history FROM ChatInstances WHERE thread_id = ?""",
-        (st.session_state.current_chat_id,)
-    )
+    Returns:
+    list: A list of messages representing the chat history.
+    """
+    try:
+        conn = sqlite3.connect("chat_instances.db")
+        c = conn.cursor()
 
-    # Fetch the first matching row
-    chat_history = c.fetchone()
+        c.execute(
+            """SELECT chat_history FROM ChatInstances WHERE thread_id = ?""",
+            (st.session_state.current_chat_id,)
+        )
 
-    conn.close()
+        chat_history = c.fetchone()
+    except Exception as e:
+        logging.exception(f"Error fetching chat history: {e}")
+    finally:
+        conn.close()
 
-    # Extract the chat history from the fetched row
     if chat_history:
         chat_history = json.loads(chat_history[0])
     else:
@@ -81,31 +118,50 @@ def get_chat_history():
     return chat_history
 
 
-# Function to delete a ChatThread instance given a thread_id
 def delete_chat_instance(thread_id):
-    conn = sqlite3.connect("chat_instances.db")
-    c = conn.cursor()
+    """
+    Deletes a chat instance from the ChatInstances table.
 
-    c.execute("""DELETE FROM ChatInstances WHERE thread_id = ?""", (thread_id,))
+    Parameters:
+    thread_id (int): The thread ID of the chat instance to delete.
 
-    thread_id = c.lastrowid
+    Returns:
+    None
+    """
+    try:
+        conn = sqlite3.connect("chat_instances.db")
+        c = conn.cursor()
 
-    if st.session_state.current_chat_id == thread_id:
-        st.session_state.current_chat_id = None
+        c.execute("""DELETE FROM ChatInstances WHERE thread_id = ?""", (thread_id,))
 
-    conn.commit()
-    conn.close()
+        if st.session_state.current_chat_id == thread_id:
+            st.session_state.current_chat_id = None
+
+        conn.commit()
+    except Exception as e:
+        logging.exception(f"Error deleting chat instance: {e}")
+    finally:
+        conn.close()
+
 
 def fetch_chats():
-    conn = sqlite3.connect("chat_instances.db")
-    c = conn.cursor()
+    """
+    Fetches all chat instances from the ChatInstances table.
 
-    # Fetch chats by username
-    c.execute(
-        "SELECT thread_id FROM ChatInstances"
-    )
-    chats = c.fetchall()
+    Returns:
+    list: A list of thread IDs representing the chat instances.
+    """
+    try:
+        conn = sqlite3.connect("chat_instances.db")
+        c = conn.cursor()
 
-    conn.close()
+        c.execute(
+            "SELECT thread_id FROM ChatInstances"
+        )
+        chats = c.fetchall()
+    except Exception as e:
+        logging.exception("Error fetching chats:")
+    finally:
+        conn.close()
 
     return chats
