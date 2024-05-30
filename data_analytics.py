@@ -197,6 +197,30 @@ def format_table_scheme(schema, table_name):
 
     return formatted_schema
 
+def delete_table(table_name):
+    """
+    Delete a table from a SQLite database.
+
+    Parameters:
+    table_name(str): The name of the table to delete.
+    
+    Returns:
+    None
+    """
+    try:
+        conn = sqlite3.connect("data_analytics.db")
+        cursor = conn.cursor()
+        
+        query = f"DROP TABLE IF EXISTS {table_name}"
+        
+        cursor.execute(query)
+        
+        conn.commit()
+        conn.close()
+        
+    except Exception as e:
+        print(f"Error deleting table {table_name}: {e}")
+
 
 def get_table_data(table_name):
     """

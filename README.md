@@ -5,7 +5,7 @@ This AI Data Analytics Tool allows you to upload a CSV file (or excel sheet), an
 
 ### Features
 - Upload and delete datasets.
-- Automatically parse, determine data types for columns, determine column names, determine table name, and store data in a SQLite database.
+- Automatically parse, determine data types for columns, determine column names, and store data in a SQLite database.
 - Navigate across multiple chat threads.
 - Easy access "View Data" button so you don't need to go back to the original copy.
 

@@ -9,6 +9,7 @@ from data_analytics import (
     get_table_schema,
     run_sql_query,
     get_table_data,
+    delete_table
 )
 from chat_instances import (
     create_database,
@@ -51,6 +52,7 @@ def upload_data():
             data = pd.read_csv(BytesIO(raw_data), encoding=encoding)
 
             insert_data(data, filename)
+            st.rerun()
 
         else:
             st.warning("Either uploaded file or filename is empty!")
@@ -63,6 +65,21 @@ def view_data(table_name):
     st.write(df)
 
 
+@st.experimental_dialog("Manage Data", width="small")
+def manage_data():
+    table_names = get_tables()
+
+    for index, table_name in enumerate(table_names):
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write(table_name)
+        with col2:
+            if st.button("Delete Table", key=table_name):
+                delete_table(table_name)
+                st.session_state.current_dataset = None
+                st.rerun()
+
+
 st.title("AI Data Analytics")
 
 create_database()
@@ -70,11 +87,19 @@ create_database()
 get_chat_history()
 
 with st.sidebar:
-    upload_button = st.button("Upload Data")
-    if upload_button:
-        upload_data()
-        st.rerun()
+    col1, col2 = st.columns(2)
 
+    with col1:
+        upload_button = st.button("Upload Data")
+        if upload_button:
+            upload_data()
+            
+
+    with col2: 
+        manage_data_button = st.button("Manage Data")
+        if manage_data_button:
+            manage_data()
+            
     if st.button("Create New Chat"):
         st.session_state.messages = []
         add_chat_instance()
