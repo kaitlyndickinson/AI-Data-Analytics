@@ -22,7 +22,7 @@ from chat_instances import (
 from prompts import sql_prompt, qa_prompt
 from llm import get_completion
 
-log_file = f"app_logger.log"
+log_file = "app_logger.log"
 logging.basicConfig(filename=log_file, level=logging.INFO)
 
 if "selected_table" not in st.session_state:
