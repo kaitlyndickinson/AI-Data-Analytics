@@ -1,6 +1,6 @@
-import pandas as pd
 import logging
 from io import BytesIO
+import pandas as pd
 import streamlit as st
 import chardet
 from data_analytics import (
@@ -69,7 +69,7 @@ def view_data(table_name):
 def manage_data():
     table_names = get_tables()
 
-    for index, table_name in enumerate(table_names):
+    for table_name in table_names:
         col1, col2 = st.columns(2)
         with col1:
             st.write(table_name)

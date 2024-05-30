@@ -1,7 +1,7 @@
 # AI Data Analytics Tool
 
 ## Purpose
-This AI Data Analytics Tool allows you to upload a CSV file (or excel sheet), and automatically parse and store the data in a SQLite database so you can chat over your data with an AI.
+This AI Data Analytics Tool allows you to upload a CSV file (or excel sheet), and automatically parse and store the data in a SQLite database so you can chat over your data with an AI. Hosted on a Streamlit app.
 
 ### Features
 - Upload and delete datasets.
@@ -31,7 +31,14 @@ I've seen similar tools, but I haven't came across one where you don't need to a
 - You can change the model being used in the llm.py file, simply kept it on gpt-3.5-turbo since it's cheap.
 - If you come across this repository and have any feature requests, feel free to open an issue! Also, if you want to collaborate, feel free to mess around and open a pull request!
 
+## Initial Setup
+1. Install dependencies with requirements.txt file.
+2. Paste your OpenAI API key into the constants_temp.py file and rename it to constants.py.
+3. Run the command "streamlit run main.py".
+
+That's it! :) 
 ## Future Plans
 - Ability to automatically determine which datasets to pull from and construct multiple queries at once (would be useful for comparing data across multiple datasets).
 - Generate diagrams, documents, and findings in one singular document (could be useful for companies wanting a automatic way to quickly analyze data without manually going through the CSV files).
 - In general, better error handling. This was a quick prototype I whipped up so there may be issues I haven't handled yet.
+- Integrate LLAMA 3 model, which could be done pretty easily (it's on another branch). This is what I initially started with, but it was just so **dang** slow, so I resulted to OpenAI.
